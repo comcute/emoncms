@@ -51,6 +51,7 @@ class Process
         $list[2] = array(_("x"),ProcessArg::VALUE,"scale",0,DataType::UNDEFINED,"Calibration");                           
         $list[3] = array(_("+"),ProcessArg::VALUE,"offset",0,DataType::UNDEFINED,"Calibration");                          
         $list[4] = array(_("Power to kWh"),ProcessArg::FEEDID,"power_to_kwh",1,DataType::REALTIME,"Power",array(Engine::PHPFINA,Engine::PHPTIMESERIES));               
+        $list[35] = array(_("Power to kWh/h"),ProcessArg::FEEDID,"power_to_kwhh",1,DataType::HOURLY,"Power",array(Engine::PHPTIMESERIES));
         $list[5] = array(_("Power to kWh/d"),ProcessArg::FEEDID,"power_to_kwhd",1,DataType::DAILY,"Power",array(Engine::PHPTIMESERIES));               
         $list[6] = array(_("x input"),ProcessArg::INPUTID,"times_input",0,DataType::UNDEFINED,"Input");                   
         $list[7] = array(_("Input on-time"),ProcessArg::FEEDID,"input_ontime",1,DataType::DAILY,"Input",array(Engine::PHPTIMESERIES));                 
@@ -289,6 +290,46 @@ class Process
             $new_kwh = $kwh_inc;
         }
         
+        $this->feed->update_data($feedid, $time_now, $current_slot, $new_kwh);
+
+        return $value;
+    }
+     
+   public function power_to_kwhh($feedid, $time_now, $value)
+    {
+        $new_kwh = 0;
+
+        // Get last value
+        $last = $this->feed->get_timevalue($feedid);
+
+        $last['time'] = strtotime($last['time']);
+        if (!isset($last['value'])) $last['value'] = 0;
+        $last_kwh = $last['value']*1;
+        $last_time = $last['time']*1;
+
+        //$current_slot = floor($time_now / 86400) * 86400;
+        //$last_slot = floor($last_time / 86400) * 86400;
+        $current_slot = $this->getstarthour($time_now);
+        $last_slot = $this->getstarthour($last_time);
+
+        if ($last_time && ((time()-$last_time)<7200)) {
+            // kWh calculation
+            $time_elapsed = ($time_now - $last_time);
+            $kwh_inc = ($time_elapsed * $value) / 3600000.0;
+        } else {
+            // in the event that redis is flushed the last time will
+            // likely be > 7200s ago and so kwh inc is not calculated
+            // rather than enter 0 we dont increase it
+            $kwh_inc = 0;
+        }
+
+        if($last_slot == $current_slot) {
+            $new_kwh = $last_kwh + $kwh_inc;
+        } else {
+            # We are working in a new slot (new day) so don't increment it with the data from yesterday
+            $new_kwh = $kwh_inc;
+        }
+
         $this->feed->update_data($feedid, $time_now, $current_slot, $new_kwh);
 
         return $value;
@@ -643,6 +684,12 @@ class Process
         // $midnight  = mktime(0, 0, 0, date("m",$time_now), date("d",$time_now), date("Y",$time_now)) - ($this->timezoneoffset * 3600);
         // $this->log->warn($midnight." ".date("Y-n-j H:i:s",$midnight)." [".$this->timezoneoffset."]");
         return mktime(0, 0, 0, date("m",$time_now), date("d",$time_now), date("Y",$time_now)) - ($this->timezoneoffset * 3600);
+    }
+
+    // Get the start of the hour
+    private function getstarthour($time_now)
+    {
+        return mktime(date("H",$time_now), 0, 0, date("m",$time_now), date("d",$time_now), date("Y",$time_now)) - ($this->timezoneoffset * 3600);
     }
 
 }

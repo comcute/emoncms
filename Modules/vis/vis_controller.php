@@ -35,13 +35,15 @@
       5 - text
       6 - float value
       7 - int value
+      8 - hourly
     */
 
     $visualisations = array(
         'realtime' => array('options'=>array(array('feedid',1))),
         // Hex colour EDC240 is the default color for flot. since we want existing setups to not change, we set the default value to it manually now,
         'rawdata'=> array('options'=>array(array('feedid',1),array('fill',7,0),array('units',5,'W'),array('colour',5,'EDC240'))),
-        'bargraph'=> array('options'=>array(array('feedid',2),array('colour',5,'EDC240'))),
+        'bargraph_d'=> array('options'=>array(array('feedid',2),array('colour',5,'EDC240'))),
+        'bargraph_h'=> array('options'=>array(array('feedid',8),array('colour',5,'EDC240'))),
         'timestoredaily'=> array('options'=>array(array('feedid',1),array('units',5,'kWh'))),
         'smoothie'=> array('options'=>array(array('feedid',1),array('ufac',6))),
         'histgraph'=> array('options'=>array(array('feedid',3),array('barwidth',7,50),array('start',7,0),array('end',7,0))),
@@ -81,8 +83,9 @@
             $datatype = $feed->get_field($feedid,'datatype');
             if ($datatype == 0) $result = "Feed type or authentication not valid";
             if ($datatype == 1) $route->action = 'rawdata';
-            if ($datatype == 2) $route->action = 'bargraph';
+            if ($datatype == 2) $route->action = 'bargraph_d';
             if ($datatype == 3) $route->action = 'histgraph';
+            if ($datatype == 8) $route->action = 'bargraph_h';
         }
 
         while ($vis = current($visualisations))
@@ -105,7 +108,7 @@
                         $key = $option[0]; $type = $option[1];
                         if (isset($option[2])) $default = $option[2]; else $default = "";
 
-                        if ($type==1 || $type==2 || $type==3)
+                        if ($type==1 || $type==2 || $type==3 || $type==8)
                         {
                             $feedid = (int) get($key);
                             if ($feedid) {

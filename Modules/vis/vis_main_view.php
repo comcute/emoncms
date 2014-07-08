@@ -170,7 +170,7 @@ global $path;
 
             var type = box_options[z][1];
 
-            if (type == 1 || type == 2 || type == 3)
+            if (type == 1 || type == 2 || type == 3 || type == 8)
             {
                 options_html += "<td>"+select_feed(box_options[z][0], feedlist, type)+"</td>";
             }

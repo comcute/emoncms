@@ -12,6 +12,7 @@
     const REALTIME = 1;
     const DAILY = 2;
     const HISTOGRAM = 3;
+    const HOURLY = 8;
   }
 
   class Engine {

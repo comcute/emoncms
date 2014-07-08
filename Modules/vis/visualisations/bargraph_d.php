@@ -127,10 +127,6 @@
                 min: start,
                 max: end
             },
-            yaxis:
-            {
-                min: 0
-            },
             selection:
             { mode: "x" }
         });
@@ -143,7 +139,7 @@
     $("#graph").bind("plothover", function (event, pos, item) {
         if (item) {
             var mdate = new Date(item.datapoint[0]);
-            if ((item.datapoint[1]) < 1)
+            if ((Math.abs(item.datapoint[1])) < 1)
             {
                     $("#stats").html(((item.datapoint[1]) * 1000 ).toFixed(1)+"Wh | "+mdate.format("ddd, mmm dS, yyyy"));
             }
