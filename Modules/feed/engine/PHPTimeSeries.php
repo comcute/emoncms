@@ -252,7 +252,7 @@ class PHPTimeSeries
             if ($time==$array['time']) return $mid;
 
             // If the query range is as small as it can be 1 datapoint wide: exit
-            if (($end-$start)==9) return ($mid-9);
+            if (($end-$start)==9) return ($mid);
 
             // If the time of the last middle of the range is
             // more than our query time then next itteration is lower half
