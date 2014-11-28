@@ -29,7 +29,7 @@ class PHPFina
     public function create($id,$options)
     {
         $interval = (int) $options['interval'];
-        if ($interval<5) $interval = 5;
+        if ($interval<4) $interval = 4;
         
         //if (!$this->checkpermissions()) return false;
         

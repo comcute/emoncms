@@ -80,6 +80,7 @@ cursor:pointer
                 <p><b>Interval</b></p>
                 <select id="export-interval" >
                     <option value="">Select interval</option>
+                    <option value=4>4s</option>
                     <option value=5>5s</option>
                     <option value=10>10s</option>
                     <option value=30>30s</option>

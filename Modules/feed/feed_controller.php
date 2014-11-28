@@ -45,6 +45,15 @@ function feed_controller()
             $result = $feed->create($session['userid'],get('name'),get('datatype'),get('engine'),json_decode(get('options')));
         } elseif ($route->action == "updatesize" && $session['write']) {
             $result = $feed->update_user_feeds_size($session['userid']);
+        } elseif ($route->action == 'bulk' && $session['write']) {
+            $data = json_decode(post('data'));
+            $feedid = post('id');
+            if(isset($feedid) && count($data))
+            foreach($data as $item) {
+                $item_time = $item[0];
+                $item_value = $item[1];
+                $result[] = $feed->insert_data($feedid,time(),$item_time,$item_value);
+            }
         } else {
             $feedid = (int) get('id');
             // Actions that operate on a single existing feed that all use the feedid to select:
