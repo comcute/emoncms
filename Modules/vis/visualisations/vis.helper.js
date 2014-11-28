@@ -58,10 +58,28 @@ var stats = {
     stats.max = 0;
     for (z in data)
     {
+      if (i==0) {
+        stats.max = data[z][1];
+        stats.min = data[z][1];
+      }
+    
+      if (data[z][1]>stats.max) stats.max = data[z][1];
+      if (data[z][1]<stats.min) stats.min = data[z][1];
       sum +=data[z][1];
       i++;
     }
+    
     stats.mean = sum / i;
+
+    sum = 0, i=0;
+    for (z in data)
+    {
+      sum += (data[z][1] - stats.mean) * (data[z][1] - stats.mean);
+      i++;
+    }
+    
+    stats.stdev = Math.sqrt(sum / i);
+    
   }
 
 }
@@ -79,3 +97,24 @@ var urlParams;
     while (match = search.exec(query))
        urlParams[decode(match[1])] = decode(match[2]);
 })();
+
+function tooltip(x, y, contents, bgColour)
+{
+
+    var offset = 15; // use higher values for a little spacing between `x,y` and tooltip
+    var elem = $('<div id="tooltip">' + contents + '</div>').css({
+        position: 'absolute',
+        display: 'none',
+        'font-weight':'bold',
+        border: '1px solid rgb(255, 221, 221)',
+        padding: '2px',
+        'background-color': bgColour,
+        opacity: '0.8'
+    }).appendTo("body").fadeIn(200);
+    //x = x - elem.width();
+    //x = x - elem.width();
+    elem.css({
+        top: y - elem.height() - offset,
+        left: x - elem.width() - offset,
+    });
+};

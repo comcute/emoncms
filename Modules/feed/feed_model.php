@@ -20,8 +20,12 @@ class Feed
     private $redis;
     public $engine;
     private $histogram;
-    private $csvdownloadlimit_mb;
+    private $csvdownloadlimit_mb = 10;
     private $log;
+    private $mqtt = false;
+    
+    // 5 years of daily data
+    private $max_npoints_returned = 1825;
 
     public function __construct($mysqli,$redis,$settings)
     {        
@@ -65,15 +69,35 @@ class Feed
                 
         $this->histogram = new Histogram($mysqli);
         
-        if (isset($settings['csvdownloadlimit_mb'])) $this->csvdownloadlimit_mb = $settings['csvdownloadlimit_mb']; else $this->csvdownloadlimit_mb = 10;
+        if (isset($settings['csvdownloadlimit_mb'])) {
+            $this->csvdownloadlimit_mb = $settings['csvdownloadlimit_mb']; 
+        }
+        
+        if (isset($settings['max_npoints_returned'])) {
+            $this->max_npoints_returned = $settings['max_npoints_returned'];
+        }
+        
+        // Load MQTT if enabled
+        // Publish value to MQTT topic, see: http://openenergymonitor.org/emon/node/5943
+        global $mqtt_enabled;
+        if (isset($mqtt_enabled) && $mqtt_enabled == true)
+        {
+            error_reporting(E_ALL ^ (E_NOTICE | E_WARNING));
+            require('SAM/php_sam.php');
+            $this->mqtt = new SAMConnection();
+            $this->mqtt->connect(SAM_MQTT, array(SAM_HOST => '127.0.0.1', SAM_PORT => 1883));
+        }
     }
 
     public function create($userid,$name,$datatype,$engine,$options_in)
     {
         $userid = (int) $userid;
-        $name = preg_replace('/[^\w\s-]/','',$name);
+        $name = preg_replace('/[^\w\s-:]/','',$name);
         $datatype = (int) $datatype;
         $engine = (int) $engine;
+        
+        // Histogram engine requires MYSQL
+        if ($datatype==DataType::HISTOGRAM && $engine!=Engine::MYSQL) $engine = Engine::MYSQL;
         
         // If feed of given name by the user already exists
         $feedid = $this->get_id($userid,$name);
@@ -159,7 +183,7 @@ class Feed
     public function get_id($userid,$name)
     {
         $userid = intval($userid);
-        $name = preg_replace('/[^\w\s-]/','',$name);
+        $name = preg_replace('/[^\w\s-:]/','',$name);
         $result = $this->mysqli->query("SELECT id FROM feeds WHERE userid = '$userid' AND name = '$name'");
         if ($result->num_rows>0) { $row = $result->fetch_array(); return $row['id']; } else return false;
     }
@@ -359,8 +383,8 @@ class Feed
         $array = array();
 
         // Repeat this line changing the field name to add fields that can be updated:
-        if (isset($fields->name)) $array[] = "`name` = '".preg_replace('/[^\w\s-]/','',$fields->name)."'";
-        if (isset($fields->tag)) $array[] = "`tag` = '".preg_replace('/[^\w\s-]/','',$fields->tag)."'";
+        if (isset($fields->name)) $array[] = "`name` = '".preg_replace('/[^\w\s-:]/','',$fields->name)."'";
+        if (isset($fields->tag)) $array[] = "`tag` = '".preg_replace('/[^\w\s-:]/','',$fields->tag)."'";
         if (isset($fields->public)) $array[] = "`public` = '".intval($fields->public)."'";
 
         // Convert to a comma seperated string for the mysql query
@@ -400,7 +424,6 @@ class Feed
         $engine = $this->get_engine($feedid);
         
         // Call to engine post method
-        clearstatcache();
         $this->engine[$engine]->post($feedid,$feedtime,$value);
 
         $this->set_timevalue($feedid, $value, $updatetime);
@@ -428,7 +451,6 @@ class Feed
         $engine = $this->get_engine($feedid);
         
         // Call to engine update method
-        clearstatcache();
         $value = $this->engine[$engine]->update($feedid,$feedtime,$value);
        
         // need to find a way to not update if value being updated is older than the last value
@@ -457,9 +479,12 @@ class Feed
         $engine = $this->get_engine($feedid);
         
         // Call to engine get_data method
-        if ($dp>800) $dp = 800;
-        $outinterval = round(($end - $start) / $dp)/1000;
+        $range = ($end - $start) * 0.001;
+        if ($dp>$this->max_npoints_returned) $dp = $this->max_npoints_returned;
+        if ($dp<1) $dp = 1;
+        $outinterval = round($range / $dp);
         return $this->engine[$engine]->get_data($feedid,$start,$end,$outinterval);
+
     }
 
     public function get_average($feedid,$start,$end,$outinterval)
@@ -472,6 +497,10 @@ class Feed
         $engine = $this->get_engine($feedid);
 
         // Call to engine get_average method
+        if ($outinterval<1) $outinterval = 1;
+        $range = ($end - $start) * 0.001;
+        $npoints = ($range / $outinterval);
+        if ($npoints>$this->max_npoints_returned) $outinterval = round($range / $this->max_npoints_returned);
         return $this->engine[$engine]->get_data($feedid,$start,$end,$outinterval);
     }
     
@@ -605,6 +634,12 @@ class Feed
             $this->redis->hMset("feed:lastvalue:$feedid", array('value' => $value, 'time' => $updatetime));
         } else {
             $this->mysqli->query("UPDATE feeds SET `time` = '$updatetime', `value` = '$value' WHERE `id`= '$feedid'");
+        }
+        
+        // Publish value to MQTT topic, see: http://openenergymonitor.org/emon/node/5943
+        if ($this->mqtt) {
+            $msg = new SAMMessage($value);
+            $this->mqtt->send("topic://emoncms/feed/$feedid", $msg);
         }
     }
     

@@ -5,6 +5,7 @@
 <script type="text/javascript" src="<?php echo $path; ?>Modules/feed/feed.js"></script>
 <script type="text/javascript" src="<?php echo $path; ?>Lib/tablejs/table.js"></script>
 <script type="text/javascript" src="<?php echo $path; ?>Lib/tablejs/custom-table-fields.js"></script>
+<link href="<?php echo $path; ?>Lib/bootstrap-datetimepicker-0.0.11/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
 <script type="text/javascript" src="<?php echo $path; ?>Lib/bootstrap-datetimepicker-0.0.11/js/bootstrap-datetimepicker.min.js"></script>
 
 <style>
@@ -151,29 +152,34 @@ cursor:pointer
     update();
 
     function update()
-    {
-        table.data = feed.list();
-
-        for (z in table.data)
-        {
-            if (table.data[z].size<1024*100) {
-                table.data[z].size = (table.data[z].size/1024).toFixed(1)+"kb";
-            } else if (table.data[z].size<1024*1024) {
-                table.data[z].size = Math.round(table.data[z].size/1024)+"kb";
-            } else if (table.data[z].size>=1024*1024) {
-                table.data[z].size = Math.round(table.data[z].size/(1024*1024))+"Mb";
+    {   
+        var apikeystr = ""; if (feed.apikey!="") apikeystr = "?apikey="+feed.apikey;
+        
+        $.ajax({ url: path+"feed/list.json"+apikeystr, dataType: 'json', async: true, success: function(data) {
+        
+            table.data = data;
+        
+            for (z in table.data)
+            {
+                if (table.data[z].size<1024*100) {
+                    table.data[z].size = (table.data[z].size/1024).toFixed(1)+"kb";
+                } else if (table.data[z].size<1024*1024) {
+                    table.data[z].size = Math.round(table.data[z].size/1024)+"kb";
+                } else if (table.data[z].size>=1024*1024) {
+                    table.data[z].size = Math.round(table.data[z].size/(1024*1024))+"Mb";
+                }
             }
-        }
-        table.draw();
-        if (table.data.length != 0) {
-            $("#nofeeds").hide();
-            $("#apihelphead").show();
-            $("#localheading").show();
-        } else {
-            $("#nofeeds").show();
-            $("#localheading").hide();
-            $("#apihelphead").hide();
-        }
+            table.draw();
+            if (table.data.length != 0) {
+                $("#nofeeds").hide();
+                $("#apihelphead").show();
+                $("#localheading").show();
+            } else {
+                $("#nofeeds").show();
+                $("#localheading").hide();
+                $("#apihelphead").hide();
+            }
+        } });
     }
 
     var updater = setInterval(update, 5000);
@@ -220,6 +226,7 @@ cursor:pointer
         
         if ($("#export-timezone").val()=="") {
             var u = user.get();
+            if (u.timezone==null) u.timezone = 0;
             $("#export-timezone").val(parseInt(u.timezone));
         }
         

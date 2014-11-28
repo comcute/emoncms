@@ -15,52 +15,19 @@
 
   function vis_controller()
   {
-    global $mysqli, $redis, $session, $route, $user, $timestore_adminkey;
+    global $mysqli, $redis, $session, $route, $user, $feed_settings;
 
     $result = false;
 
     require "Modules/feed/feed_model.php";
-    $feed = new Feed($mysqli,$redis, $timestore_adminkey);
+    $feed = new Feed($mysqli,$redis, $feed_settings);
 
     require "Modules/vis/multigraph_model.php";
     $multigraph = new Multigraph($mysqli);
 
     $visdir = "vis/visualisations/";
 
-    /*
-      1 - realtime
-      2 - daily
-      3 - histogram
-      4 - boolean (not used uncomment line 122)
-      5 - text
-      6 - float value
-      7 - int value
-      8 - hourly
-    */
-
-    $visualisations = array(
-        'realtime' => array('options'=>array(array('feedid',1))),
-        // Hex colour EDC240 is the default color for flot. since we want existing setups to not change, we set the default value to it manually now,
-        'rawdata'=> array('options'=>array(array('feedid',1),array('fill',7,0),array('units',5,'W'),array('colour',5,'EDC240'))),
-        'bargraph_d'=> array('options'=>array(array('feedid',2),array('colour',5,'EDC240'))),
-        'bargraph_h'=> array('options'=>array(array('feedid',8),array('colour',5,'EDC240'))),
-        'timestoredaily'=> array('options'=>array(array('feedid',1),array('units',5,'kWh'))),
-        'smoothie'=> array('options'=>array(array('feedid',1),array('ufac',6))),
-        'histgraph'=> array('options'=>array(array('feedid',3),array('barwidth',7,50),array('start',7,0),array('end',7,0))),
-        //'dailyhistogram'=> array('options'=>array(array('feedid',3))),
-        'zoom'=> array('options'=>array(array('power',1),array('kwhd',2),array('currency',5,'&pound;'),array('currency_after_val', 7, 0), array('pricekwh',6,0.14))),
-        //'comparison'=> array('options'=>array(array('feedid',3))),
-        'stacked'=> array('options'=>array(array('bottom',2),array('top',2))),
-        'stackedsolar'=> array('options'=>array(array('solar',2),array('consumption',2))),
-        'threshold'=> array('options'=>array(array('feedid',3),array('thresholdA',6,500),array('thresholdB',6,2500))),
-        'simplezoom'=> array('options'=>array(array('power',1),array('kwhd',2))),
-        'orderbars'=> array('options'=>array(array('feedid',2))),
-        'orderthreshold'=> array('options'=>array(array('feedid',3),array('power',1),array('thresholdA',6,500),array('thresholdB',6,2500))),
-        'editrealtime'=> array('options'=>array(array('feedid',1))),
-        'editdaily'=> array('options'=>array(array('feedid',2))),
-        'multigraph' => array ('action'=>'multigraph', 'options'=>array(array('mid',7)) ),
-        'compare' => array ('action'=>'compare', 'options'=>array(array('powerx',1),array('powery',1)))
-    );
+    require "Modules/vis/vis_object.php";
 
     $write_apikey = ""; $read_apikey = "";
     if ($session['read']) $read_apikey = $user->get_apikey_read($session['userid']);
@@ -83,9 +50,8 @@
             $datatype = $feed->get_field($feedid,'datatype');
             if ($datatype == 0) $result = "Feed type or authentication not valid";
             if ($datatype == 1) $route->action = 'rawdata';
-            if ($datatype == 2) $route->action = 'bargraph_d';
+            if ($datatype == 2) $route->action = 'bargraph';
             if ($datatype == 3) $route->action = 'histgraph';
-            if ($datatype == 8) $route->action = 'bargraph_h';
         }
 
         while ($vis = current($visualisations))
@@ -108,7 +74,7 @@
                         $key = $option[0]; $type = $option[1];
                         if (isset($option[2])) $default = $option[2]; else $default = "";
 
-                        if ($type==1 || $type==2 || $type==3 || $type==8)
+                        if ($type==0 || $type==1 || $type==2 || $type==3)
                         {
                             $feedid = (int) get($key);
                             if ($feedid) {
@@ -116,8 +82,8 @@
                               $array[$key] = $feedid;
                               $array[$key.'name'] = $f['name'];
 
-                              if ($f['userid']!=$session['userid'] || $f['datatype']!=$type) $array['valid'] = false;
-                              if ($f['public'] && $f['datatype']==$type) $array['valid'] = true;
+                              if ($f['userid']!=$session['userid']) $array['valid'] = false;
+                              if ($f['public']) $array['valid'] = true;
                             } else {
                               $array['valid'] = false;
                             }
@@ -147,7 +113,7 @@
 
                 $result = view("Modules/".$visdir.$viskey.".php", $array);
 
-                if ($array['valid'] == false) $result .= "<div style='position:absolute; top:0px; left:0px; background-color:rgba(240,240,240,0.5); width:100%; height:100%; text-align:center; padding-top:100px;'><h3>Feed type or authentication not valid</h3></div>";
+                if ($array['valid'] == false) $result .= "<div style='position:absolute; top:0px; left:0px; background-color:rgba(240,240,240,0.5); width:100%; height:100%; text-align:center; padding-top:100px;'><h3>Authentication not valid</h3></div>";
 
             }
             next($visualisations);
