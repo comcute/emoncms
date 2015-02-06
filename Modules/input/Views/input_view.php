@@ -81,6 +81,7 @@ input[type="text"] {
 
                         <select id="feed-interval" style="width:130px">
                             <option value="">Select interval</option>
+                            <option value=4>4s</option>
                             <option value=5>5s</option>
                             <option value=10>10s</option>
                             <option value=15>15s</option>
