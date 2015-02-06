@@ -43,7 +43,8 @@ class Feed
         
         // Development engines
         require "Modules/feed/engine/PHPFina.php";
-        require "Modules/feed/engine/PHPFiwa.php";     
+        require "Modules/feed/engine/PHPFiwa.php"; 
+        require "Modules/feed/engine/PHPRRD.php";    
            
         // Backwards compatibility 
         if (!isset($settings)) $settings= array();
@@ -54,6 +55,7 @@ class Feed
         if (!isset($settings['graphite'])) $settings['graphite'] = array('host'=>"", 'port'=>0);
         if (!isset($settings['phpfiwa'])) $settings['phpfiwa'] = array();
         if (!isset($settings['phpfina'])) $settings['phpfina'] = array();
+        if (!isset($settings['phprrd'])) $settings['phprrd'] = array();
         if (!isset($settings['phptimestore'])) $settings['phptimestore'] = array();
         if (!isset($settings['phptimeseries'])) $settings['phptimeseries'] = array();
               
@@ -66,6 +68,7 @@ class Feed
         $this->engine[Engine::GRAPHITE] = new GraphiteTimeSeries($settings['graphite']);
         $this->engine[Engine::PHPFINA] = new PHPFina($settings['phpfina']);
         $this->engine[Engine::PHPFIWA] = new PHPFiwa($settings['phpfiwa']);
+        $this->engine[Engine::PHPRRD] = new PHPRRD($settings['phprrd']);
                 
         $this->histogram = new Histogram($mysqli);
         
@@ -128,7 +131,8 @@ class Feed
             if ($engine==Engine::PHPTIMESTORE) $options['interval'] = (int) $options_in->interval;
             if ($engine==Engine::PHPFINA) $options['interval'] = (int) $options_in->interval;
             if ($engine==Engine::PHPFIWA) $options['interval'] = (int) $options_in->interval;
-            
+            if ($engine==Engine::PHPRRD) $options['interval'] = (int) $options_in->interval;
+
             $engineresult = false;
             if ($datatype==DataType::HISTOGRAM) {
                 $engineresult = $this->histogram->create($feedid,$options);

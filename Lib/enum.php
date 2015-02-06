@@ -23,4 +23,5 @@
     const PHPTIMESTORE = 4;
     const PHPFINA = 5;
     const PHPFIWA = 6;
+    const PHPRRD = 7;
   }

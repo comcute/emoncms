@@ -2,7 +2,7 @@
 
 // This timeseries engine implements:
 // Fixed Interval No Averaging
-
+#define('AVG', 'True');
 class PHPFina
 {
     private $dir = "/var/lib/phpfina/";
@@ -215,12 +215,32 @@ class PHPFina
             // Exit the loop if the position is beyond the end of the file
             if ($pos > $meta->npoints-1) break;
 
+            if(defined('AVG')) {
+            // read from the file
+            $seekPosStart = ($startpos+($i * $skipsize));
+            $seekPosStop = ($startpos+(($i + 1) * $skipsize));
+            $j = 0;
+            $val[1] = 0;
+            while ($seekPosStart < $seekPosStop) {
+                fseek($fh, $seekPosStart * 4);
+                $val[1] += unpack("f", fread($fh, 4))[1];
+                $j++;
+                $seekPosStart++;
+            }
+            $val[1] = $val[1] / $j;
+            
+            // calculate the datapoint time
+            $time = $meta->start_time+($seekPosStop - 1) * $meta->interval;
+            }
+
+            else {
             // read from the file
             fseek($fh,$pos*4);
             $val = unpack("f",fread($fh,4));
 
             // calculate the datapoint time
             $time = $meta->start_time + $pos * $meta->interval;
+            }
 
             // add to the data array if its not a nan value
             if (!is_nan($val[1])) $data[] = array($time*1000,$val[1]);
