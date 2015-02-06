@@ -54,7 +54,7 @@ class PHPRRD {
 			$this->log->warn("PHPRRD:create could not create data file id=$id");
 			return false;
 		}
-
+		return true;
 	}
 
 	/**

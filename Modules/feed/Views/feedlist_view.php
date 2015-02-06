@@ -129,7 +129,7 @@ cursor:pointer
         'name':{'title':"<?php echo _('Name'); ?>", 'type':"text"},
         'tag':{'title':"<?php echo _('Tag'); ?>", 'type':"text"},
         'datatype':{'title':"<?php echo _('Datatype'); ?>", 'type':"select", 'options':['','REALTIME','DAILY','HISTOGRAM','','','','','HOURLY']},
-        'engine':{'title':"<?php echo _('Engine'); ?>", 'type':"fixedselect", 'options':['MYSQL','TIMESTORE','PHPTIMESERIES','GRAPHITE','PHPTIMESTORE','PHPFINA','PHPFIWA']},
+        'engine':{'title':"<?php echo _('Engine'); ?>", 'type':"fixedselect", 'options':['MYSQL','TIMESTORE','PHPTIMESERIES','GRAPHITE','PHPTIMESTORE','PHPFINA','PHPFIWA','PHPRRD']},
         'public':{'title':"<?php echo _('Public'); ?>", 'type':"icon", 'trueicon':"icon-globe", 'falseicon':"icon-lock"},
         'size':{'title':"<?php echo _('Size'); ?>", 'type':"fixed"},
 
