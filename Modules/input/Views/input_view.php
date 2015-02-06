@@ -76,11 +76,13 @@ input[type="text"] {
                             <option value=6 >Fixed Interval With Averaging (PHPFIWA)</option>
                             <option value=5 >Fixed Interval No Averaging (PHPFINA)</option>
                             <option value=2 >Variable Interval No Averaging (PHPTIMESERIES)</option>
+                            <option value=7 >Variable Interval With Averaging (PHPRRD)</option>
                         </select>
 
 
                         <select id="feed-interval" style="width:130px">
                             <option value="">Select interval</option>
+                            <option value=4>4s</option>
                             <option value=5>5s</option>
                             <option value=10>10s</option>
                             <option value=15>15s</option>

@@ -45,11 +45,13 @@
     var start = +new Date - timeWindow;  //Get start time
     var end = +new Date; 
     
-    var dataA = feed.get_average(kwhdA,start,end,3600*24);
-    var dataB = feed.get_average(kwhdB,start,end,3600*24);
+    var _dataA = feed.get_average(kwhdA,start,end,3600*24);
+    var _dataB = feed.get_average(kwhdB,start,end,3600*24);
 
-    var dataC = [];
-
+    var dataA = [[],[]];
+    var dataB = [[],[]];
+    var dataC = [[],[]];
+/*
     for (z in dataA)
     {
         dataC[z]=[dataA[z][0],0];
@@ -58,6 +60,21 @@
         if (dataA[z]==undefined) {dataA[z] = [dataB[z][0],0];}
         dataB[z][1] = dataB[z][1] - dataA[z][1];
         if (dataB[z][1]<0) {dataC[z][1] = dataB[z][1]*-1; dataB[z][1] = 0;}
+    }*/
+
+    for(a in _dataA) {
+        for(b in _dataB) {
+            if(_dataA[a][0] == _dataB[b][0]) {
+                dataA = _dataA;
+                dataB[a] = [_dataB[b][0],0];
+                dataC[a] = [_dataB[b][0],0];
+                dataB[a][1] = _dataB[b][1] - _dataA[a][1];
+                if (dataB[a][1] < 0) { 
+                    dataC[a][1] = dataB[a][1] * -1;
+                    dataB[a][1] = 0;
+                }
+            }
+        }
     }
 
     var embed = <?php echo $embed; ?>;
