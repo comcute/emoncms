@@ -76,7 +76,7 @@ input[type="text"] {
                             <option value=6 >Fixed Interval With Averaging (PHPFIWA)</option>
                             <option value=5 >Fixed Interval No Averaging (PHPFINA)</option>
                             <option value=2 >Variable Interval No Averaging (PHPTIMESERIES)</option>
-                            <option value=7 >Variable Interval With Averaging (PHPRRD)</option>
+                            <option value=<?php echo Engine::PHPRRD ?> >Variable Interval With Averaging (PHPRRD)</option>
                         </select>
 
 

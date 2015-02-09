@@ -47,8 +47,9 @@ class PHPRRD {
 			"--step", $interval,
 			"DS:feed:GAUGE:" . $interval * 2 . ":U:U",
 			"RRA:AVERAGE:0.5:1:".$rows,
-			"RRA:AVERAGE:0.5:1:".$rows/365,
-			"RRA:AVERAGE:0.5:1:".$rows/365*7);
+			"RRA:AVERAGE:0.5:18:".$rows/18,
+			"RRA:AVERAGE:0.5:126:".$rows/126,
+			"RRA:AVERAGE:0.5:540:".$rows/540);
 
 		if (!rrd_create($this->dir . $id . ".rrd", $rrd_options)) {
 			$this->log->warn("PHPRRD:create could not create data file id=$id");
