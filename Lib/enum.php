@@ -24,4 +24,5 @@
     const PHPFINA = 5;
     const PHPFIWA = 6;
     const PHPRRD = 7;
+    const PHPCIRC = 8;
   }

@@ -86,7 +86,7 @@ var processlist_ui =
         $("#processlist-ui #feed-engine").change(function(){
             var engine = $(this).val();
             $("#feed-interval").hide();
-            if (engine==6 || engine==5 || engine==4 || engine==1 || engine==7) $("#feed-interval").show();
+            if (engine==6 || engine==5 || engine==4 || engine==1 || engine==7 || engine==8) $("#feed-interval").show();
         });
 
         $('#processlist-ui #process-add').click(function() 
