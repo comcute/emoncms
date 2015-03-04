@@ -2,15 +2,14 @@
 
 // This timeseries engine implements:
 // Fixed Interval No Averaging
-#define('AVG', 'True');
-class EmonLogger {
+/*class EmonLogger {
 public function warn($msg) {
 echo $msg . "\n";
 }
 public function info($msg) {
 $this->warn($msg);
 }
-}
+}*/
 class PHPCIRC {
 	private $dir;
 	private $log;
@@ -26,19 +25,20 @@ class PHPCIRC {
 			$this->dir = $settings['datadir'];
 		}
 
-		else $this->dir = __DIR__."/";
-		// else {
-		// 	$this->dir = "/var/lib/PHPFic/";
-		// }
+		#else $this->dir = __DIR__."/";
+		 else {
+			$this->dir = "/var/lib/phpcirc/";
+		 }
 
-		$this->log = new EmonLogger();
-		#$this->log = new EmonLogger(__FILE__);
+		#$this->log = new EmonLogger();
+		$this->log = new EmonLogger(__FILE__);
 	}
 
 	/**
 	 * Create feed
 	 *
 	 * @param integer $id The id of the feed to be created
+	 * @param array $options Optional options for the feed to be created
 	 */
 	public function create($id, $options) {
 		$interval = (int) $options['interval'];
@@ -93,7 +93,7 @@ class PHPCIRC {
 	 * Adds a data point to the feed
 	 *
 	 * @param integer $id The id of the feed to add to
-	 * @param integer $time The unix timestamp of the data point, in seconds
+	 * @param integer $timestamp The unix timestamp of the data point, in seconds
 	 * @param float $value The value of the data point
 	 */
 	public function post($id, $timestamp, $value) {
@@ -104,12 +104,12 @@ class PHPCIRC {
 		$value = (float) $value;
 
 		$now = time();
-		$start = $now - (3600 * 24 * 365 * 5); // 5 years in past
+		$start = $now - (3600 * 24 * 365); // 1 year in past
 		$end = $now + (3600 * 48); // 48 hours in future
 
 		if ($timestamp < $start || $timestamp > $end) {
 			$this->log->warn("PHPFic:post timestamp out of range");
-			#return false;
+			return false;
 		}
 
 		// If meta data file does not exist then exit
@@ -150,6 +150,7 @@ class PHPCIRC {
 
 		}
 
+		// Open datafile (R/W)
 		$fh = fopen($this->dir . $id . ".dat", 'c+');
 		if (!$fh) {
 			$this->log->warn("PHPFic:post could not open data file id=$id");
@@ -163,12 +164,7 @@ class PHPCIRC {
 
 		// Write new datapoint
 		fseek($fh, $pos * 4);
-		if (!is_nan($value)) {
-			fwrite($fh, pack("f", $value));
-		} else {
-			fwrite($fh, pack("f", NAN));
-		}
-
+		fwrite($fh, pack("f", $value));
 		// Close file
 		fclose($fh);
 
@@ -177,7 +173,7 @@ class PHPCIRC {
 			$meta->end_pos = $pos;
 			$meta->end_time = $timestamp;
 		}
-
+		// Update metafile
 		$this->update_meta($id, $meta);
 
 		return $value;
@@ -200,12 +196,12 @@ class PHPCIRC {
 	 * @param integer $id The id of the feed to fetch from
 	 * @param integer $start The unix timestamp in ms of the start of the data range
 	 * @param integer $end The unix timestamp in ms of the end of the data range
-	 * @param integer $dp The number of data points to return (used by some engines)
+	 * @param integer $outinterval The interval between data points
 	 */
 	public function get_data($id, $start, $end, $outinterval) {
-		$id = intval($id);
-		$start = intval($start / 1000);
-		$end = intval($end / 1000);
+		$id = (int) ($id);
+		$start = (int) ($start / 1000);
+		$end = (int) ($end / 1000);
 		$outinterval = (int) $outinterval;
 
 		// If meta data file does not exist then exit
@@ -213,37 +209,45 @@ class PHPCIRC {
 			return false;
 		}
 
+		// Limit min interval
 		if ($outinterval < $meta->interval) {
 			$outinterval = $meta->interval;
 		}
+
+		// Limit requested ending time
 		if ($end > $meta->end_time) {
 			$end = $meta->end_time;
 		}
 
-		$dp = ceil(($end - $start) / $outinterval);
-		#$end = $start + ($dp * $outinterval);
+		$start_time = $meta->end_time - $meta->interval * $meta->max_npoints;
+		
+		// Limit requested starting time
+		if($start < $start_time) {
+			$start = $start_time;
+		}
 
-		// $dpratio = $outinterval / $meta->interval;
+		// The number of datapoints requested
+		$dp = ceil(($end - $start) / $outinterval);
+
 		if ($dp < 1) {
 			return false;
 		}
+
 		// The number of datapoints in the query range:
 		$dp_in_range = ($end - $start) / $meta->interval;
 
 		// Divided by the number we need gives the number of datapoints to skip
 		// i.e if we want 1000 datapoints out of 100,000 then we need to get one
 		// datapoints every 100 datapoints.
-		$skipsize = floor($dp_in_range / $dp);
+		$skipsize = round($dp_in_range / $dp);
 		if ($skipsize < 1) {
 			$skipsize = 1;
 		}
 
 		// Calculate the starting datapoint position
-		$start_time = $meta->end_time - $meta->interval * $meta->max_npoints;
-
 		if ($start < $meta->end_time) {
 			if ($start > $start_time) {
-				$startpos = $meta->end_pos - ceil(($meta->end_time - $start) / $meta->interval);
+				$startpos = $meta->end_pos - ceil(($meta->end_time - $start) / $meta->interval) + 1;
 			} else {
 				$startpos = $meta->end_pos - $meta->max_npoints + 1;
 			}
@@ -259,14 +263,20 @@ class PHPCIRC {
 		$data = array();
 		$time = 0;
 		$i = 0;
-
+		
 		// The datapoints are selected within a loop that runs until we reach a
 		// datapoint that is beyond the end of our query range
 		$fh = fopen($this->dir . $id . ".dat", 'rb');
-		//$this->log->warn("PHPCIRC:start=$start, end=$end, int=$outinterval, dps=$dp_in_range, start_time=$start_time, end_time=$meta->end_time");
+		$this->log->warn("PHPCIRC:start=$start, end=$end, int=$outinterval, dps=$dp_in_range, start_time=$start_time, end_time=$meta->end_time, skipsize=$skipsize");
+		
+		// Get average result if time < ~50 hours
+		if($skipsize > 50 )
+			$readsize = 4;
+		else
+			$readsize = 4 * $skipsize;
 
 		while (($dp_count = $i * $skipsize) < $dp_in_range) {
-			// $position steps forward by skipsize every loop
+			// position steps forward by skipsize every loop
 			$pos = ($startpos + $dp_count);
 			if ($pos > ($meta->max_npoints - 1)) {
 				$pos = $pos - $meta->max_npoints;
@@ -276,10 +286,10 @@ class PHPCIRC {
 			if ($pos > $meta->max_npoints - 1) {
 				break;
 			}
-			//$this->log->warn("pos2=$pos, time=$time");
+
 			// read from the file
 			fseek($fh, $pos * 4);
-			$val = unpack("f", fread($fh, 4));
+			$val = unpack("f*", fread($fh, $readsize));
 
 			// calculate the datapoint time
 			if ($pos <= $meta->end_pos) {
@@ -289,16 +299,23 @@ class PHPCIRC {
 			}
 			//fixme
 
+			//$value = array_reduce($val, array($this, 'sum')) / count($val);
+			//if (!is_nan($value))
+			//	$data[] = array($time * 1000, $value); 
 			// add to the data array if its not a nan value
-			if (!is_nan($val[1])) {
-				$data[] = array($time * 1000, $val[1]);
-			}
+			$reduced = array_reduce($val, function( $carry, $item ) {
+				if(!is_nan($item)) {
+					$carry['s'] += $item;
+					$carry['c'] += 1;
+				}
+				return $carry;
+			}, $initial=array('s' => 0, 'c' => 0));
 
+			if($reduced['c'] > 0) {
+				$value = $reduced['s'] / $reduced['c'];
+				$data[] = array($time * 1000, $value);
+			}
 			$i++;
-			#	$arr = get_defined_vars();
-			#	print_r($arr);
-			#	if($i>3)
-			#	return;
 		}
 		return $data;
 	}
@@ -524,101 +541,14 @@ class PHPCIRC {
 	}
 
 	public function csv_export($id, $start, $end, $outinterval) {
-		$id = intval($id);
-		$start = intval($start);
-		$end = intval($end);
-		$outinterval = (int) $outinterval;
-
-		// If meta data file does not exist then exit
-		if (!$meta = $this->get_meta($id)) {
-			return false;
-		}
-
-		if ($outinterval < $meta->interval) {
-			$outinterval = $meta->interval;
-		}
-
-		$dp = ceil(($end - $start) / $outinterval);
-		$end = $start + ($dp * $outinterval);
-
-		// $dpratio = $outinterval / $meta->interval;
-		if ($dp < 1) {
-			return false;
-		}
-
-		// The number of datapoints in the query range:
-		$dp_in_range = ($end - $start) / $meta->interval;
-
-		// Divided by the number we need gives the number of datapoints to skip
-		// i.e if we want 1000 datapoints out of 100,000 then we need to get one
-		// datapoints every 100 datapoints.
-		$skipsize = round($dp_in_range / $dp);
-		if ($skipsize < 1) {
-			$skipsize = 1;
-		}
-
-		// Calculate the starting datapoint position in the timestore file
-		if ($start > $meta->end_time) {
-			$startpos = ceil(($start - $meta->end_time) / $meta->interval);
-		} else {
-			$start = ceil($meta->end_time / $outinterval) * $outinterval;
-			$startpos = ceil(($start - $meta->end_time) / $meta->interval);
-		}
-
-		$data = array();
-		$time = 0;
-		$i = 0;
-
-		// There is no need for the browser to cache the output
-		header("Cache-Control: no-cache, no-store, must-revalidate");
-
-		// Tell the browser to handle output as a csv file to be downloaded
-		header('Content-Description: File Transfer');
-		header("Content-type: application/octet-stream");
-		$filename = $id . ".csv";
-		header("Content-Disposition: attachment; filename={$filename}");
-
-		header("Expires: 0");
-		header("Pragma: no-cache");
-
-		// Write to output stream
-		$exportfh = @fopen('php://output', 'w');
-
-		// The datapoints are selected within a loop that runs until we reach a
-		// datapoint that is beyond the end of our query range
-		$fh = fopen($this->dir . $id . ".dat", 'rb');
-		while ($time <= $end) {
-			// $position steps forward by skipsize every loop
-			$pos = ($startpos + ($i * $skipsize));
-
-			// Exit the loop if the position is beyond the end of the file
-			if ($pos > $meta->npoints - 1) {
-				break;
-			}
-
-			// read from the file
-			fseek($fh, $pos * 4);
-			$val = unpack("f", fread($fh, 4));
-
-			// calculate the datapoint time
-			$time = $meta->end_time + $pos * $meta->interval;
-
-			// add to the data array if its not a nan value
-			if (!is_nan($val[1])) {
-				fwrite($exportfh, $time . "," . number_format($val[1], 2) . "\n");
-			}
-
-			$i++;
-		}
-		fclose($exportfh);
 		exit;
 	}
 
 }
 
-$api = new PHPCIRC(array());
+#$api = new PHPCIRC(array());
 #$api->create(148, array('interval' => 5));
 #$api->post(148, $argv[1], $argv[2]);
 #print_r($api->lastvalue(148));
-$data = $api->get_data(148, $argv[1], $argv[2], $argv[3]);
-var_dump($data);
+#$data = $api->get_data(148, $argv[1], $argv[2], $argv[3]);
+#var_dump($data);

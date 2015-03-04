@@ -36,13 +36,15 @@ class PHPRRD {
 			$interval = 5;
 		}
 
- 
-        $rows = 6307200; // one year
+ 		$secs_in_year = 86400 * 365;
+        $rows = $secs_in_year / $interval;
         
 
 		$now = time();
         $start= floor($now / $interval) * $interval;
-		$rrd_options = array(
+
+        if($interval < 3600) {
+        	$rrd_options = array(
 			"--start", $start,
 			"--step", $interval,
 			"DS:feed:GAUGE:" . $interval * 2 . ":U:U",
@@ -50,6 +52,15 @@ class PHPRRD {
 			"RRA:AVERAGE:0.5:18:".$rows/18,
 			"RRA:AVERAGE:0.5:126:".$rows/126,
 			"RRA:AVERAGE:0.5:540:".$rows/540);
+        }
+
+        else {
+        	$rrd_options = array(
+			"--start", $start,
+			"--step", $interval,
+			"DS:feed:GAUGE:" . $interval * 2 . ":U:U",
+			"RRA:AVERAGE:0.5:1:".$rows);
+        }
 
 		if (!rrd_create($this->dir . $id . ".rrd", $rrd_options)) {
 			$this->log->warn("PHPRRD:create could not create data file id=$id");
@@ -62,7 +73,7 @@ class PHPRRD {
 	 * Adds a data point to the feed
 	 *
 	 * @param integer $id The id of the feed to add to
-	 * @param integer $time The unix timestamp of the data point, in seconds
+	 * @param integer $timestamp The unix timestamp of the data point, in seconds
 	 * @param float $value The value of the data point
 	 */
 	public function post($id, $timestamp, $value) {
@@ -112,9 +123,9 @@ class PHPRRD {
 	 * @param integer $dp The number of data points to return (used by some engines)
 	 */
 	public function get_data($id, $start, $end, $outinterval) {
-		$id = intval($id);
-		$start = intval($start / 1000);
-		$end = intval($end / 1000);
+		$id = (int) ($id);
+		$start = (int) ($start / 1000);
+		$end = (int) ($end / 1000);
 		$outinterval = (int) $outinterval;
 
 		$dp = ceil(($end - $start) / $outinterval);

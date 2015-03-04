@@ -402,6 +402,8 @@ var processlist_ui =
             key = 'max'; type = 2; break;
           case 28:
             key = 'min'; type = 2; break;
+          case 35:
+            key = 'kwhh'; type = 2; break;
         }  
 
         value = keyvalue[1];
