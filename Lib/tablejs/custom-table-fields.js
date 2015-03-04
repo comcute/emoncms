@@ -133,6 +133,8 @@ var customtablefields = {
                 key = '/ feed'; type = 4; break;
               case 33:
                 key = '= 0'; type = 3; break;
+              case 35:
+                key = 'kwhh'; type = 2; break;
             }  
 
             value = keyvalue[1];
