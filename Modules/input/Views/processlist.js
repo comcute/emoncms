@@ -116,6 +116,9 @@ var processlist_ui =
                     var options = {};
                     if (datatype==2) { 
                         options = {interval:3600*24};
+                    }
+                    else if(datatype==8) {
+                        options = {interval:3600};
                     } else {
                         options = {interval:$('#feed-interval').val()};
                     }
@@ -275,7 +278,7 @@ var processlist_ui =
             }
 
             // If the datatype is daily then the interval is fixed to 3600s x 24h, no need to show interval selector
-            if (datatype==2) {
+            if (datatype==2 || datatype ==8) {
                 $("#feed-interval").hide();
             } else {
                 $("#feed-interval").show();

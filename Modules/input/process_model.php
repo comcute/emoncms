@@ -240,7 +240,11 @@ class Process
         {
             // kWh calculation
             $time_elapsed = ($time_now - $last_time);
-            $kwh_inc = ($time_elapsed * $value) / 3600000.0;
+            // DST fix
+            if($time_elapsed < 0)
+                $kwh_inc = 0;
+            else
+                $kwh_inc = ($time_elapsed * $value) / 3600000.0;
             $new_kwh = $last_kwh + $kwh_inc;
         } else {
             // in the event that redis is flushed the last time will
@@ -274,7 +278,11 @@ class Process
         if ($last_time && ((time()-$last_time)<7200)) {
             // kWh calculation
             $time_elapsed = ($time_now - $last_time);
-            $kwh_inc = ($time_elapsed * $value) / 3600000.0;
+            // DST fix
+            if($time_elapsed < 0)
+                $kwh_inc = 0;
+            else
+                $kwh_inc = ($time_elapsed * $value) / 3600000.0;
         } else {
             // in the event that redis is flushed the last time will
             // likely be > 7200s ago and so kwh inc is not calculated
